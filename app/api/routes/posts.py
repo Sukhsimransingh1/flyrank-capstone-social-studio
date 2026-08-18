@@ -7,7 +7,10 @@ from app.db.session import get_db
 from app.schemas.post import PostCreate, PostResponse
 from app.schemas.variant import VariantResponse
 from app.services.post_service import create_post, get_post
-from app.services.variant_service import generate_variants
+from app.services.variant_service import (
+    generate_variants,
+    get_variants_for_post,
+)
 
 
 router = APIRouter(
@@ -25,18 +28,24 @@ def create_post_endpoint(
     payload: PostCreate,
     db: Session = Depends(get_db),
 ):
-    return create_post(db, payload)
+    return create_post(
+        db=db,
+        payload=payload,
+    )
 
 
 @router.get(
-    "/{post_id}",
-    response_model=PostResponse,
+    "/{post_id}/variants",
+    response_model=list[VariantResponse],
 )
-def get_post_endpoint(
+def get_post_variants(
     post_id: UUID,
     db: Session = Depends(get_db),
 ):
-    post = get_post(db, post_id)
+    post = get_post(
+        db=db,
+        post_id=post_id,
+    )
 
     if post is None:
         raise HTTPException(
@@ -44,7 +53,10 @@ def get_post_endpoint(
             detail="Post not found.",
         )
 
-    return post
+    return get_variants_for_post(
+        db=db,
+        post_id=post_id,
+    )
 
 
 @router.post(
@@ -56,7 +68,10 @@ def generate_post_variants(
     post_id: UUID,
     db: Session = Depends(get_db),
 ):
-    post = get_post(db, post_id)
+    post = get_post(
+        db=db,
+        post_id=post_id,
+    )
 
     if post is None:
         raise HTTPException(
@@ -68,3 +83,25 @@ def generate_post_variants(
         db=db,
         post=post,
     )
+
+
+@router.get(
+    "/{post_id}",
+    response_model=PostResponse,
+)
+def get_post_endpoint(
+    post_id: UUID,
+    db: Session = Depends(get_db),
+):
+    post = get_post(
+        db=db,
+        post_id=post_id,
+    )
+
+    if post is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found.",
+        )
+
+    return post
