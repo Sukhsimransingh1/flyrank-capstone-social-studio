@@ -7,8 +7,9 @@ from app.api.routes.variants import router as variants_router
 from app.core.config import settings
 from app.db.session import Base, check_database_connection, engine
 from app.models.post import Post  # noqa: F401
+from app.models.publish import PublishRecord  # noqa: F401
 from app.models.variant import Variant  # noqa: F401
-
+from app.api.routes.publish import router as publish_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +25,7 @@ app = FastAPI(
 )
 
 app.include_router(posts_router)
+app.include_router(publish_router)
 app.include_router(variants_router)
 
 
