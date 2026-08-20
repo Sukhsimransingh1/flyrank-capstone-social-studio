@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.time import utc_now
 from app.db.session import Base
 
 
@@ -18,34 +19,29 @@ class Post(Base):
     )
 
     source_type: Mapped[str] = mapped_column(
-        String(20),
+        String(50),
         nullable=False,
     )
 
-    source_url: Mapped[str | None] = mapped_column(
-        String(2048),
-        nullable=True,
+    title: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
     )
 
-    source_markdown: Mapped[str | None] = mapped_column(
+    source_markdown: Mapped[str] = mapped_column(
         Text,
-        nullable=True,
-    )
-
-    title: Mapped[str | None] = mapped_column(
-        String(500),
-        nullable=True,
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False,
     )
