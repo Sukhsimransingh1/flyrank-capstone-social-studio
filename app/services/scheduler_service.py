@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.publish import PublishRecord
+from app.models.publish_history import PublishHistory
 from app.publishers.registry import publisher_registry
 from app.services.telegram_service import TelegramService
 
@@ -21,6 +22,7 @@ class SchedulerService:
         scheduled -> publishing -> published
                               -> failed
 
+    Every publishing attempt is also stored in PublishHistory.
     Telegram notifications are sent after processing.
     """
 
@@ -80,6 +82,13 @@ class SchedulerService:
                 record.published_at = datetime.now(timezone.utc)
                 record.error = None
 
+                self._create_history(
+                    record=record,
+                    status="published",
+                    external_id=result.external_id,
+                    error=None,
+                )
+
                 self.db.commit()
                 self.db.refresh(record)
 
@@ -95,6 +104,13 @@ class SchedulerService:
             else:
                 record.status = "failed"
                 record.error = result.error
+
+                self._create_history(
+                    record=record,
+                    status="failed",
+                    external_id=None,
+                    error=result.error,
+                )
 
                 self.db.commit()
                 self.db.refresh(record)
@@ -113,6 +129,13 @@ class SchedulerService:
             record.status = "failed"
             record.error = str(exc)
 
+            self._create_history(
+                record=record,
+                status="failed",
+                external_id=None,
+                error=str(exc),
+            )
+
             self.db.commit()
             self.db.refresh(record)
 
@@ -124,6 +147,26 @@ class SchedulerService:
             self.telegram.send_message(
                 self._failure_message(record)
             )
+
+    def _create_history(
+        self,
+        record: PublishRecord,
+        status: str,
+        external_id: str | None,
+        error: str | None,
+    ) -> PublishHistory:
+        history = PublishHistory(
+            publish_record_id=record.id,
+            variant_id=record.variant_id,
+            platform=record.platform,
+            status=status,
+            external_id=external_id,
+            error=error,
+        )
+
+        self.db.add(history)
+
+        return history
 
     def _get_variant_content(self, variant_id):
         from app.models.variant import Variant

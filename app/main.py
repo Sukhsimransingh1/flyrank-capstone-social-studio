@@ -4,13 +4,18 @@ from fastapi import FastAPI
 
 from app.api.routes.posts import router as posts_router
 from app.api.routes.variants import router as variants_router
-from app.core.config import settings
-from app.db.session import Base, check_database_connection, engine
-from app.models.post import Post  # noqa: F401
-from app.models.publish import PublishRecord  # noqa: F401
-from app.models.variant import Variant  # noqa: F401
 from app.api.routes.publish import router as publish_router
 from app.api.routes.schedule import router as schedule_router
+from app.core.config import settings
+from app.db.session import Base, check_database_connection, engine
+
+# Import all models so SQLAlchemy registers their metadata.
+from app.models.post import Post  # noqa: F401
+from app.models.publish import PublishRecord  # noqa: F401
+from app.models.publish_history import PublishHistory  # noqa: F401
+from app.models.variant import Variant  # noqa: F401
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
@@ -28,6 +33,7 @@ app.include_router(posts_router)
 app.include_router(publish_router)
 app.include_router(variants_router)
 app.include_router(schedule_router)
+
 
 @app.get("/health")
 def health() -> dict:
