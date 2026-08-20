@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.publish_record import PublishRecord
+from app.models.publish import PublishRecord
 from app.services.publish_service import PublishService
 
 
@@ -45,7 +45,6 @@ class SchedulerService:
             except Exception as exc:
                 record.status = "failed"
                 record.error = str(exc)
-
                 self.db.commit()
 
         return processed
