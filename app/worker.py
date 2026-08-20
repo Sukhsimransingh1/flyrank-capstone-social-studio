@@ -23,16 +23,17 @@ def process_once() -> int:
         scheduler = SchedulerService(db)
         processed = scheduler.process_due_records()
 
-        if processed:
-            logger.info(
-                "Scheduler processed %s due record(s).",
-                processed,
-            )
+        logger.info(
+            "Scheduler poll completed. processed=%s.",
+            processed,
+        )
 
         return processed
 
     except Exception:
-        logger.exception("Scheduler iteration failed.")
+        logger.exception(
+            "Scheduler iteration failed unexpectedly."
+        )
         return 0
 
     finally:
