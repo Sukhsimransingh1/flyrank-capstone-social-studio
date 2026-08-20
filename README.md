@@ -1,66 +1,72 @@
 # FlyRank Capstone — Social Media Studio
 
-A backend service that turns one stored blog post into platform-specific social variants, routes them through a human review workflow, schedules approved variants, and publishes through a common `SocialPublisher` adapter interface.
+A backend service that turns one stored blog post into platform-specific social variants, routes them through human review, schedules approved variants, and publishes them through a common SocialPublisher adapter interface.
 
-## Current stage
+## Current Stage
 
-**Stage 1 — Design + backend foundation**
+Stage 10 — Configuration hardening, observability, testing, and documentation.
 
-Implemented:
-- FastAPI application
-- PostgreSQL via Docker Compose
-- SQLAlchemy database foundation
+## Architecture
+
+The system currently implements:
+
+Blog Post
+    ↓
+Variant Generation
+    ↓
+Constraint Validation
+    ↓
+Human Review
+    ↓
+Scheduling
+    ↓
+Background Scheduler Worker
+    ↓
+Publisher Registry
+    ↓
+Platform Publisher
+    ↓
+Publish Record
+
+## Implemented Features
+
+- FastAPI backend
+- PostgreSQL persistence
+- SQLAlchemy ORM
+- Docker Compose development environment
 - Environment-based configuration
 - Health endpoint
-- Initial project architecture
-- Design document
-- Safe `.env.example`
+- Platform-specific content variants
+- Variant validation
+- Human review workflow
+- Publish workflow
+- Idempotency protection
+- Durable scheduled publishing
+- Background scheduler worker
+- Publisher adapter interface
+- Mock publisher
+- Scheduler observability
+- Automated tests
 
-Next stages will add ingestion, generation, constraint validation, review workflow, adapters, idempotent publishing, durable scheduling, publish history, tests, evidence, and final documentation.
+## Scheduler
 
-## Run
+The scheduler runs as a dedicated Docker service.
+
+It polls the database every 5 seconds for scheduled records whose slot is due.
+
+Lifecycle:
+
+scheduled → publishing → published
+
+or:
+
+scheduled → publishing → failed
+
+The scheduler updates the existing PublishRecord rather than creating a new record, preserving idempotency.
+
+## Running the Project
+
+Start the complete stack:
 
 ```bash
 docker compose up --build
-```
-
-API:
-- http://localhost:8000
-- Swagger: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-Health check:
-
-```bash
-curl http://localhost:8000/health
-```
-
-## Project structure
-
-```text
-app/
-├── api/
-├── core/
-├── db/
-├── models/
-├── repositories/
-├── schemas/
-├── services/
-├── publishers/
-└── main.py
-
-tests/
-scripts/
-```
-
-## Required FlyRank artifacts
-
-- `DESIGN.md`
-- `README.md`
-- `EVIDENCE.md`
-- `BUILDLOG.md`
-- `.env.example`
-
-## Non-goals
-
-Image generation, analytics, engagement tracking, and real X/LinkedIn publishing are outside the core capstone scope.

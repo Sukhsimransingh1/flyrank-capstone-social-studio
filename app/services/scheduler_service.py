@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.publish import PublishRecord
 from app.publishers.registry import publisher_registry
+from app.services.telegram_service import TelegramService
 
 
 logger = logging.getLogger(__name__)
@@ -20,12 +21,12 @@ class SchedulerService:
         scheduled -> publishing -> published
                               -> failed
 
-    The existing PublishRecord is updated in place so the scheduler
-    never creates duplicate records for an already scheduled job.
+    Telegram notifications are sent after processing.
     """
 
     def __init__(self, db: Session):
         self.db = db
+        self.telegram = TelegramService()
 
     def process_due_records(self) -> int:
         now = datetime.now(timezone.utc)
@@ -47,18 +48,11 @@ class SchedulerService:
         processed = 0
 
         for record in records:
-            logger.info(
-                "Processing publish record id=%s platform=%s slot=%s.",
-                record.id,
-                record.platform,
-                record.slot,
-            )
-
             self._process_record(record)
             processed += 1
 
         logger.info(
-            "Scheduler iteration completed. processed=%s.",
+            "Scheduler iteration completed. processed=%s",
             processed,
         )
 
@@ -71,17 +65,14 @@ class SchedulerService:
         self.db.commit()
         self.db.refresh(record)
 
-        logger.info(
-            "Publish record id=%s transitioned to publishing.",
-            record.id,
-        )
-
         try:
             publisher = publisher_registry.get(record.platform)
 
-            result = publisher.publish(
-                self._get_variant_content(record.variant_id)
+            content = self._get_variant_content(
+                record.variant_id
             )
+
+            result = publisher.publish(content)
 
             if result.success:
                 record.status = "published"
@@ -89,40 +80,50 @@ class SchedulerService:
                 record.published_at = datetime.now(timezone.utc)
                 record.error = None
 
+                self.db.commit()
+                self.db.refresh(record)
+
                 logger.info(
-                    "Publish record id=%s published successfully "
-                    "external_id=%s.",
+                    "Published record %s successfully.",
                     record.id,
-                    record.external_id,
+                )
+
+                self.telegram.send_message(
+                    self._success_message(record)
                 )
 
             else:
                 record.status = "failed"
                 record.error = result.error
 
+                self.db.commit()
+                self.db.refresh(record)
+
                 logger.error(
-                    "Publish record id=%s failed: %s",
+                    "Publishing failed for record %s: %s",
                     record.id,
-                    record.error,
+                    result.error,
+                )
+
+                self.telegram.send_message(
+                    self._failure_message(record)
                 )
 
         except Exception as exc:
             record.status = "failed"
             record.error = str(exc)
 
+            self.db.commit()
+            self.db.refresh(record)
+
             logger.exception(
-                "Publish record id=%s raised an exception.",
+                "Scheduler failed processing record %s.",
                 record.id,
             )
 
-        self.db.commit()
-        self.db.refresh(record)
-
-        logger.info(
-            "Publish record id=%s final status=%s.",
-            record.id,
-            record.status,
-        )
+            self.telegram.send_message(
+                self._failure_message(record)
+            )
 
     def _get_variant_content(self, variant_id):
         from app.models.variant import Variant
@@ -135,3 +136,23 @@ class SchedulerService:
             )
 
         return variant.content
+
+    @staticmethod
+    def _success_message(record: PublishRecord) -> str:
+        return (
+            "✅ FlyRank Social Studio\n\n"
+            "Scheduled post published successfully.\n\n"
+            f"Platform: {record.platform}\n"
+            f"Record ID: {record.id}\n"
+            f"External ID: {record.external_id}"
+        )
+
+    @staticmethod
+    def _failure_message(record: PublishRecord) -> str:
+        return (
+            "❌ FlyRank Social Studio\n\n"
+            "Scheduled post failed.\n\n"
+            f"Platform: {record.platform}\n"
+            f"Record ID: {record.id}\n"
+            f"Error: {record.error}"
+        )
