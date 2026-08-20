@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,12 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+
+    scheduler_poll_interval: int = Field(
+        default=5,
+        ge=1,
+        description="Scheduler polling interval in seconds.",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
