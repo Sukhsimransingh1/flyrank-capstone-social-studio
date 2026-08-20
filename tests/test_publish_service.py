@@ -9,7 +9,6 @@ from app.db.session import Base
 from app.models.post import Post
 from app.models.publish import PublishRecord
 from app.models.variant import Variant
-from app.publishers.registry import publisher_registry
 from app.services.publish_service import PublishService
 
 
@@ -138,7 +137,28 @@ def test_platform_mismatch(db, variant):
         )
 
 
-def test_unsupported_platform_creates_failed_record(db, variant):
+def test_unsupported_platform_creates_failed_record(db):
+    post = Post(
+        source_type="manual",
+        title="Unsupported Platform Test",
+        source_markdown="# Test",
+    )
+
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+
+    variant = Variant(
+        post_id=post.id,
+        platform="unsupported-platform",
+        content="Unsupported platform test.",
+        status="approved",
+    )
+
+    db.add(variant)
+    db.commit()
+    db.refresh(variant)
+
     service = PublishService(db)
 
     record = service.publish(

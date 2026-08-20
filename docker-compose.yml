@@ -31,5 +31,18 @@ services:
       db:
         condition: service_healthy
 
+  scheduler:
+    build: .
+    container_name: social-studio-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://socialstudio:socialstudio@db:5432/socialstudio
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres_data:
